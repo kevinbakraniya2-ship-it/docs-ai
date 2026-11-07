@@ -1,0 +1,23 @@
+{% extends "core/base.html" %}
+{% block title %}My PDFs · Docs AI{% endblock %}
+{% block content %}
+<main>
+    <p class="eyebrow">Your private study space</p>
+    <h1>My PDFs</h1>
+    <p class="intro">Only documents uploaded to your account appear here.</p>
+    <p><a class="button" href="{% url 'documents:upload' %}">Upload a PDF</a></p>
+
+    {% if documents %}
+        {% for document in documents %}
+            <section class="panel">
+                <h2>{{ document.title }}</h2>
+                <p>Uploaded {{ document.uploaded_at|date:"M j, Y" }}</p>
+                <a href="{% url 'documents:read' document.id %}">Read text by page</a>
+                <a href="{% url 'documents:ask' document.id %}">Ask this PDF</a>
+            </section>
+        {% endfor %}
+    {% else %}
+        <section class="panel"><p>You haven’t uploaded a PDF yet.</p></section>
+    {% endif %}
+</main>
+{% endblock %}

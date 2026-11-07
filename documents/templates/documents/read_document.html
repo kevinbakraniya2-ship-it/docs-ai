@@ -1,0 +1,24 @@
+{% extends "core/base.html" %}
+{% block title %}{{ document.title }} · Docs AI{% endblock %}
+{% block content %}
+<main>
+    <p class="eyebrow">PDF text preview</p>
+    <h1>{{ document.title }}</h1>
+    <p><a href="{% url 'documents:list' %}">Back to My PDFs</a></p>
+
+    {% if error %}
+        <section class="panel"><p>{{ error }}</p></section>
+    {% else %}
+        {% for page in pages %}
+            <section class="panel">
+                <h2>Page {{ page.page_number }}</h2>
+                {% if page.text %}
+                    <pre style="white-space: pre-wrap">{{ page.text }}</pre>
+                {% else %}
+                    <p>No selectable text on this page. Scanned PDFs will need OCR later.</p>
+                {% endif %}
+            </section>
+        {% endfor %}
+    {% endif %}
+</main>
+{% endblock %}

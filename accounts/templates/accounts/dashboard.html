@@ -1,0 +1,14 @@
+{% extends "core/base.html" %}
+{% block title %}My dashboard · Docs AI{% endblock %}
+{% block content %}
+<main>
+    <p class="eyebrow">Your study space</p>
+    <h1>Hello, {{ user.username }}.</h1>
+    <p class="intro">Your account is ready. Next we’ll let you upload PDFs that belong only to your account.</p>
+    <section class="panel">
+        <h2>Your documents</h2>
+        <p>Upload a PDF to start asking questions about your study material.</p>
+        <p><a class="button" href="{% url 'documents:upload' %}">Upload a PDF</a></p>
+    </section>
+</main>
+{% endblock %}

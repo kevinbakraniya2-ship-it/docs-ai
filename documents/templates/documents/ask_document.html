@@ -1,0 +1,83 @@
+{% extends "core/base.html" %}
+
+{% block title %}Ask {{ document.title }} · Docs AI{% endblock %}
+
+{% block content %}
+<main class="ask-page">
+    <header class="ask-heading">
+        <p class="eyebrow">Document workspace / Ask</p>
+        <h1 class="ask-title">{{ document.title }}</h1>
+        <p class="ask-subtitle">Ask about this PDF and check the source pages behind the answer.</p>
+    </header>
+
+    <form method="post" class="form-card ask-form">
+        {% csrf_token %}
+        <div class="question-field">
+            {{ form.question.label_tag }}
+            {{ form.question }}
+            {{ form.question.errors }}
+        </div>
+        <button class="button" type="submit">Search this PDF</button>
+    </form>
+
+    {% if error %}
+        <section class="notice" role="status">
+            <p>{{ error }}</p>
+        </section>
+    {% endif %}
+
+    {% if answer %}
+        <section class="answer-card" aria-labelledby="answer-title">
+            <div class="answer-heading">
+                <div>
+                    <p class="answer-kicker">From your document</p>
+                    <h2 id="answer-title">Answer</h2>
+                </div>
+            </div>
+
+            {% if answer_is_code %}
+                <pre class="answer-code"><code>{{ answer }}</code></pre>
+            {% else %}
+                <div class="answer-text">{{ answer|linebreaksbr }}</div>
+            {% endif %}
+
+            {% if results %}
+                <div class="answer-sources">
+                    <span class="source-label">Relevant pages</span>
+                    <div class="source-list">
+                        {% for result in results %}
+                            <a class="source-chip" href="#source-page-{{ result.page_number }}">Page {{ result.page_number }}</a>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </section>
+    {% endif %}
+
+    {% if results %}
+        <section class="passages-section" aria-labelledby="passages-title">
+            <div class="section-heading">
+                <h2 id="passages-title">Matching passages</h2>
+                <p>These are the parts of the PDF used to find the answer.</p>
+            </div>
+
+            <div class="passage-list">
+                {% for result in results %}
+                    <article class="passage-card" id="source-page-{{ result.page_number }}">
+                        <h3>Page {{ result.page_number }}</h3>
+                        {% for snippet in result.snippets %}
+                            <p>{{ snippet }}</p>
+                        {% endfor %}
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+    {% elif request.method == "POST" and not error %}
+        <section class="notice" role="status">
+            <p>No matching text found. Try words that appear in the PDF.</p>
+        </section>
+    {% endif %}
+
+    <p class="back-link"><a href="{% url 'documents:list' %}">Back to My PDFs</a></p>
+</main>
+{% endblock %}
