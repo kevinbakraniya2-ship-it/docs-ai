@@ -12,6 +12,7 @@ from .answer_service import (
     generate_answer,
     is_code_question,
 )
+from collections import Counter
 
 
 @login_required
@@ -117,8 +118,13 @@ def ask_document(request, document_id):
             form.add_error("question", "Add a few meaningful words.")
         else:
             for page in document.pages.all():
-                page_words = re.findall(r"\w+", page.text.casefold())
-                score = sum(min(page_words.count(term), 3) for term in query_terms)
+                page_word_counts = Counter(
+                    re.findall(r"\w+", page.text.casefold())
+                )
+                score = sum(
+                    min(page_word_counts[term], 3)
+                    for term in query_terms
+                )
 
                 if score:
                     sentences = [
