@@ -7,12 +7,35 @@ class AnswerGenerationError(Exception):
     """Shown when the local AI cannot generate an answer."""
 
 
-_CODE_QUESTION = re.compile(r"\b(code|script|query|sql)\b|\.php\b", re.IGNORECASE)
+_CODE_QUESTION = re.compile(
+    r"\b(code|script|query|sql|program|source code)\b|"
+    r"\.(php|py|js|html|css|sql)\b",
+    re.IGNORECASE,
+)
 
+_CODE_REQUEST = re.compile(
+    r"\b(give|show|write|provide|create|generate|display|return|send)\b|"
+    r"\bsql\s+query\b|"
+    r"\b(code do|query do|sql do|de do|dikhao|likho|chahiye|bana do)\b",
+    re.IGNORECASE,
+)
+_EXPLANATION_REQUEST = re.compile(
+    r"\b(what\s+is|explain|describe|meaning|definition|tell\s+me\s+about|"
+    r"kya\s+hai|kya\s+he|samjhao|samjha\s+do)\b",
+    re.IGNORECASE,
+)
 
 def is_code_question(question):
-    return bool(_CODE_QUESTION.search(question or ""))
+    question = question or ""
 
+    # Explanation ke saath code maanga ho, to jawab normal text mein dikhao.
+    if _EXPLANATION_REQUEST.search(question):
+        return False
+
+    return bool(
+        _CODE_QUESTION.search(question)
+        and _CODE_REQUEST.search(question)
+    )
 
 def clean_answer(answer, code_response=False):
     """Remove presentation-only Markdown while preserving source code."""
@@ -29,6 +52,8 @@ def clean_answer(answer, code_response=False):
 
     if code_response:
         return answer
+
+    answer = re.sub(r"(?m)^\s*`{3,}[^\n]*\n?", "", answer)
 
     answer = re.sub(r"\*\*(.+?)\*\*", r"\1", answer)
     answer = re.sub(
