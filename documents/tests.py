@@ -6,9 +6,13 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
-from .answer_service import clean_answer
+from .answer_service import AnswerGenerationError, clean_answer, generate_answer,is_code_question
 from .forms import MAX_PDF_SIZE
 from .models import Document
+
+from unittest.mock import patch
+
+import httpx
 
 
 User = get_user_model()
@@ -129,4 +133,45 @@ class AnswerFormattingTests(SimpleTestCase):
         self.assertEqual(
             clean_answer(answer, code_response=True),
             '<?php\n$name = "Maya";',
+        )
+
+class AnswerTimeoutTests(SimpleTestCase):
+    @patch("documents.answer_service.Client")
+    def test_timeout_returns_friendly_error(self, mock_client_class):
+        mock_client = mock_client_class.return_value
+        mock_client.chat.side_effect = httpx.ReadTimeout("timed out")
+
+        results = [
+            {
+                "page_number": 1,
+                "context": "SQL means Structured Query Language.",
+            }
+        ]
+
+        with self.assertRaises(AnswerGenerationError) as error:
+            generate_answer("What is SQL?", results)
+
+        self.assertIn(
+            "Ollama ne samay par jawab nahi diya",
+            str(error.exception),
+        )
+
+class CodeQuestionDetectionTests(SimpleTestCase):
+    def test_explanation_question_is_not_code_only(self):
+        self.assertFalse(is_code_question("What is SQL?"))
+
+    def test_sql_query_request_uses_code_mode(self):
+        self.assertTrue(is_code_question("SQL query"))
+
+    def test_mixed_explanation_and_query_is_not_code_only(self):
+        question = "What is SQL? Give me an example for any SQL query"
+        self.assertFalse(is_code_question(question))
+
+
+class MixedAnswerFormattingTests(SimpleTestCase):
+    def test_embedded_code_fences_are_removed_from_explanation(self):
+        answer = "Query:\n```sql\nSELECT * FROM employees;\n```"
+        self.assertEqual(
+            clean_answer(answer),
+            "Query:\nSELECT * FROM employees;",
         )
