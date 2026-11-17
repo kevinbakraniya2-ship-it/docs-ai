@@ -1,5 +1,5 @@
 import re
-
+import httpx
 from ollama import Client, ResponseError
 
 
@@ -112,6 +112,12 @@ def generate_answer(question, results):
             messages=messages,
             think=False,
         )
+    except httpx.TimeoutException as problem:
+        raise AnswerGenerationError(
+            "Ollama ne samay par jawab nahi diya. Chhota sawaal try karo "
+            "ya thodi der baad dobara poochho."
+        ) from problem
+        
     except (ConnectionError, ResponseError) as problem:
         raise AnswerGenerationError(
             "Ollama se jawab nahi mila. Check karo Ollama chal raha hai "
