@@ -8,11 +8,15 @@ from django.urls import reverse
 
 from .answer_service import AnswerGenerationError, clean_answer, generate_answer,is_code_question
 from .forms import MAX_PDF_SIZE
-from .models import Document
+from .models import Document, DocumentPage
 
 from unittest.mock import patch
 
 import httpx
+
+from unittest.mock import patch
+
+
 
 
 User = get_user_model()
@@ -175,3 +179,74 @@ class MixedAnswerFormattingTests(SimpleTestCase):
             clean_answer(answer),
             "Query:\nSELECT * FROM employees;",
         )
+
+class DocumentSearchTests(TestCase):
+    def setUp(self):
+        project_root = Path(__file__).resolve().parent.parent
+        self.temp_media = tempfile.TemporaryDirectory(dir=project_root)
+        self.addCleanup(self.temp_media.cleanup)
+
+        self.media_override = override_settings(MEDIA_ROOT=self.temp_media.name)
+        self.media_override.enable()
+        self.addCleanup(self.media_override.disable)
+
+        self.user = User.objects.create_user(
+            username="searcher",
+            password="Test-password-123!",
+        )
+        self.client.force_login(self.user)
+
+        pdf = SimpleUploadedFile(
+            "search.pdf",
+            b"%PDF-1.4\nSearch test",
+            content_type="application/pdf",
+        )
+        self.document = Document.objects.create(
+            owner=self.user,
+            title="SQL notes",
+            file=pdf,
+        )
+
+    @patch("documents.views.generate_answer", return_value="Fake answer")
+    def test_search_selects_page_matching_query_terms(self, mock_generate):
+        DocumentPage.objects.create(
+            document=self.document,
+            page_number=1,
+            text="This page discusses databases generally.",
+        )
+        DocumentPage.objects.create(
+            document=self.document,
+            page_number=2,
+            text="SQL query examples are shown on this page.",
+        )
+
+        response = self.client.post(
+            reverse("documents:ask", args=[self.document.pk]),
+            {"question": "SQL query"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        page_numbers = [
+            result["page_number"]
+            for result in response.context["results"]
+        ]
+        self.assertEqual(page_numbers, [2])
+        mock_generate.assert_called_once()
+
+    @patch("documents.views.generate_answer")
+    def test_no_match_shows_message_without_calling_ai(self, mock_generate):
+        DocumentPage.objects.create(
+            document=self.document,
+            page_number=1,
+            text="SQL query examples are shown on this page.",
+        )
+
+        response = self.client.post(
+            reverse("documents:ask", args=[self.document.pk]),
+            {"question": "volcano astronomy"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["results"], [])
+        self.assertContains(response, "No matching text found.")
+        mock_generate.assert_not_called()
