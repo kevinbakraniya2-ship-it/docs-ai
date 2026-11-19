@@ -90,7 +90,7 @@ Open http://127.0.0.1:8000/, create an account, upload a PDF, and open Read text
 
 ```cmd
 python manage.py check
-python manage.py test documents
+python manage.py test
 ```
 
 ## Project layout
