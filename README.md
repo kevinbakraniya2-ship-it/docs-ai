@@ -36,6 +36,7 @@ A larger copy is available in [docs/flowchart.md](docs/flowchart.md).
 - Ask local Ollama's qwen3:4b-instruct model for an answer based on the matching passages.
 - Show source page links so the answer can be checked against the PDF.
 - Format code answers as code while preserving line breaks.
+- Extracts English text from scanned or image-based PDFs using OCR.
 
 ## Tools used
 
@@ -107,7 +108,7 @@ db.sqlite3      Local development database (not committed)
 
 ## Current limits
 
-- Scanned or image-only PDFs do not have OCR yet; the PDF needs selectable text.
+- OCR currently supports English text; recognition accuracy depends on scan quality.
 - Search uses keyword matching, not embeddings or a vector database.
 - Check the source pages before relying on an answer. The model is asked not to add details absent from the PDF, but local AI answers can still be imperfect.
 - Text extraction currently supports up to 100 pages and stores up to 5,000 characters from each page.
