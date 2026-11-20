@@ -3,18 +3,13 @@ from io import BytesIO
 import pytesseract
 from pdf2image import convert_from_bytes
 from pypdf import PdfReader
+from django.conf import settings
 
 
 MAX_PDF_PAGES = 100
 MAX_TEXT_PER_PAGE = 5000
 OCR_DPI = 200
 OCR_TIMEOUT_SECONDS = 45
-
-TESSERACT_CMD = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-POPPLER_PATH = (
-    r"C:\Release-26.09.0-0\poppler-26.09.0\Library\bin"
-)
-
 
 class PDFProcessingError(Exception):
     """A PDF could not be safely read for text preview."""
@@ -40,7 +35,7 @@ def extract_pdf_pages(document):
         if not reader.pages:
             raise PDFProcessingError("This PDF does not contain any pages.")
 
-        pytesseract.pytesseract.tesseract_cmd = TESSERACT_CMD
+        pytesseract.pytesseract.tesseract_cmd = settings.TESSERACT_CMD
         pages = []
 
         for page_number, page in enumerate(reader.pages, start=1):
@@ -56,7 +51,7 @@ def extract_pdf_pages(document):
                         dpi=OCR_DPI,
                         fmt="png",
                         thread_count=1,
-                        poppler_path=POPPLER_PATH,
+                        poppler_path=settings.POPPLER_PATH,
                         timeout=60,
                     )
                     if images:

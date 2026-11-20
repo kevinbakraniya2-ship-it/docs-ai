@@ -44,6 +44,8 @@ A larger copy is available in [docs/flowchart.md](docs/flowchart.md).
 - Django 6.1
 - SQLite for local development
 - pypdf for extracting text and page numbers
+- pytesseract and Tesseract OCR for scanned PDFs
+- pdf2image and Poppler for rendering scanned PDF pages
 - Ollama with the qwen3:4b-instruct model
 - Django templates, HTML, and CSS
 
@@ -70,7 +72,18 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 
 Copy the generated value into the DJANGO_SECRET_KEY line in your local .env file. Keep .env private; it is excluded from Git.
 
-### 3. Download and start the local model
+### 3. Set up OCR for scanned PDFs (Windows)
+
+Scanned or image-only PDFs need Tesseract OCR and Poppler. Install Tesseract and extract Poppler on your computer. In your local `.env` file, set the paths below to match your installation:
+
+```text
+TESSERACT_CMD="C:/Program Files/Tesseract-OCR/tesseract.exe"
+POPPLER_PATH="C:/path/to/Poppler/Library/bin"
+```
+
+`TESSERACT_CMD` must point to `tesseract.exe`. `POPPLER_PATH` must point to the folder containing `pdfinfo.exe`. The example Poppler path is a placeholder; use your own path. Keep these computer-specific values in `.env`, which is excluded from Git. Normal PDFs with selectable text do not need OCR.
+
+### 4. Download and start the local model
 
 ```cmd
 ollama run qwen3:4b-instruct
@@ -78,7 +91,7 @@ ollama run qwen3:4b-instruct
 
 The model downloads the first time. Once it responds, Ollama can serve the model locally. Keep Ollama running while using Docs AI.
 
-### 4. Prepare and start Django
+### 5. Prepare and start Django
 
 ```cmd
 python manage.py migrate
