@@ -21,6 +21,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load local-only configuration. Never commit the .env file.
 load_dotenv(BASE_DIR / ".env")
+TESSERACT_CMD = os.getenv("TESSERACT_CMD", "tesseract")
+POPPLER_PATH = os.getenv("POPPLER_PATH") or None
 
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
