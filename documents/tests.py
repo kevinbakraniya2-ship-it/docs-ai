@@ -15,6 +15,11 @@ from unittest.mock import patch
 import httpx
 
 from unittest.mock import patch
+from io import BytesIO
+from types import SimpleNamespace
+from unittest.mock import Mock, patch
+
+from .pdf_reader import extract_pdf_pages
 
 
 
@@ -250,3 +255,50 @@ class DocumentSearchTests(TestCase):
         self.assertEqual(response.context["results"], [])
         self.assertContains(response, "No matching text found.")
         mock_generate.assert_not_called()
+
+class PDFOCRTests(SimpleTestCase):
+    def make_document(self):
+        file_object = SimpleNamespace(
+            open=Mock(return_value=BytesIO(b"%PDF test"))
+        )
+        return SimpleNamespace(file=file_object)
+
+    def test_scanned_page_uses_ocr(self):
+        page = SimpleNamespace(extract_text=Mock(return_value=""))
+        reader = SimpleNamespace(is_encrypted=False, pages=[page])
+
+        with (
+            patch("documents.pdf_reader.PdfReader", return_value=reader),
+            patch(
+                "documents.pdf_reader.convert_from_bytes",
+                return_value=[object()],
+            ) as convert,
+            patch(
+                "documents.pdf_reader.pytesseract.image_to_string",
+                return_value="Recognized scanned text",
+            ) as ocr,
+        ):
+            pages = extract_pdf_pages(self.make_document())
+
+        self.assertEqual(pages[0]["text"], "Recognized scanned text")
+        convert.assert_called_once()
+        ocr.assert_called_once()
+
+    def test_text_pdf_does_not_use_ocr(self):
+        page = SimpleNamespace(
+            extract_text=Mock(return_value="Selectable PDF text")
+        )
+        reader = SimpleNamespace(is_encrypted=False, pages=[page])
+
+        with (
+            patch("documents.pdf_reader.PdfReader", return_value=reader),
+            patch("documents.pdf_reader.convert_from_bytes") as convert,
+            patch(
+                "documents.pdf_reader.pytesseract.image_to_string"
+            ) as ocr,
+        ):
+            pages = extract_pdf_pages(self.make_document())
+
+        self.assertEqual(pages[0]["text"], "Selectable PDF text")
+        convert.assert_not_called()
+        ocr.assert_not_called()
