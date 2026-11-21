@@ -1,5 +1,3 @@
-import re
-
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
@@ -12,7 +10,8 @@ from .answer_service import (
     generate_answer,
     is_code_question,
 )
-from collections import Counter
+
+from .vector_search import VectorSearchError, search_document_pages
 
 
 @login_required
@@ -95,68 +94,22 @@ def ask_document(request, document_id):
         error = "Open Read text by page once before asking a question."
 
     if request.method == "POST" and form.is_valid() and not error:
-        stop_words = {
-            "what", "when", "where", "which", "who", "why", "how",
-            "the", "is", "are", "was", "were", "a", "an", "of",
-            "for", "to", "in", "on", "and", "or", "from", "with",
-            "management", "system", "systems", "details", "detail",
-            "explain", "describe", "tell", "about", "please", "show",
-            "give", "me", "pdf", "document", "mujhe", "muje", "isme",
-            "mein", "me", "ki", "ka", "ke", "batao", "do", "chahiye",
-            "hai", "he", "kya", "ko",
-        }
-        query_terms = {
-            word
-            for word in re.findall(
-                r"\w+",
-                form.cleaned_data["question"].casefold(),
+        try:
+            results = search_document_pages(
+                document,
+                form.cleaned_data["question"],
             )
-            if len(word) > 1 and word not in stop_words
-        }
 
-        if not query_terms:
-            form.add_error("question", "Add a few meaningful words.")
-        else:
-            for page in document.pages.all():
-                page_word_counts = Counter(
-                    re.findall(r"\w+", page.text.casefold())
+            if results:
+                answer = generate_answer(
+                    form.cleaned_data["question"],
+                    results,
                 )
-                score = sum(
-                    min(page_word_counts[term], 3)
-                    for term in query_terms
+                answer_is_code = is_code_question(
+                    form.cleaned_data["question"]
                 )
-
-                if score:
-                    sentences = [
-                        sentence.strip()
-                        for sentence in re.split(
-                            r"(?<=[.!?])\s+|\n+",
-                            page.text,
-                        )
-                        if sentence.strip()
-                    ]
-                    matching_sentences = [
-                        sentence
-                        for sentence in sentences
-                        if query_terms.intersection(
-                            re.findall(r"\w+", sentence.casefold())
-                        )
-                    ]
-
-                    results.append(
-                        {
-                            "page_number": page.page_number,
-                            "snippets": matching_sentences[:6]
-                            or [page.text[:1000]],
-                            "context": page.text[:6000],
-                            "score": score,
-                        }
-                    )
-
-            results.sort(
-                key=lambda result: (-result["score"], result["page_number"])
-            )
-            results = results[:3]
+        except (VectorSearchError, AnswerGenerationError) as problem:
+            error = str(problem)
 
             if results:
                 try:
