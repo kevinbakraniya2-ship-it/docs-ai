@@ -212,8 +212,13 @@ class DocumentSearchTests(TestCase):
             file=pdf,
         )
 
+    @patch("documents.views.search_document_pages")
     @patch("documents.views.generate_answer", return_value="Fake answer")
-    def test_search_selects_page_matching_query_terms(self, mock_generate):
+    def test_search_selects_page_matching_query_terms(
+        self,
+        mock_generate,
+        mock_search,
+    ):
         DocumentPage.objects.create(
             document=self.document,
             page_number=1,
@@ -224,6 +229,14 @@ class DocumentSearchTests(TestCase):
             page_number=2,
             text="SQL query examples are shown on this page.",
         )
+        mock_search.return_value = [
+            {
+                "page_number": 2,
+                "snippets": ["SQL query examples are shown on this page."],
+                "context": "SQL query examples are shown on this page.",
+                "score": 0.8,
+            }
+        ]
 
         response = self.client.post(
             reverse("documents:ask", args=[self.document.pk]),
@@ -236,10 +249,16 @@ class DocumentSearchTests(TestCase):
             for result in response.context["results"]
         ]
         self.assertEqual(page_numbers, [2])
+        mock_search.assert_called_once_with(self.document, "SQL query")
         mock_generate.assert_called_once()
 
+    @patch("documents.views.search_document_pages", return_value=[])
     @patch("documents.views.generate_answer")
-    def test_no_match_shows_message_without_calling_ai(self, mock_generate):
+    def test_no_match_shows_message_without_calling_ai(
+        self,
+        mock_generate,
+        mock_search,
+    ):
         DocumentPage.objects.create(
             document=self.document,
             page_number=1,
@@ -254,8 +273,11 @@ class DocumentSearchTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["results"], [])
         self.assertContains(response, "No matching text found.")
+        mock_search.assert_called_once_with(
+            self.document,
+            "volcano astronomy",
+        )
         mock_generate.assert_not_called()
-
 class PDFOCRTests(SimpleTestCase):
     def make_document(self):
         file_object = SimpleNamespace(
