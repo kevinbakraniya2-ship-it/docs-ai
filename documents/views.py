@@ -1,3 +1,4 @@
+import re
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
@@ -12,6 +13,46 @@ from .answer_service import (
 )
 
 from .vector_search import VectorSearchError, search_document_pages
+
+_TOPIC_FILLER_WORDS = {
+    "what", "when", "where", "which", "who", "why", "how",
+    "is", "are", "was", "were", "a", "an", "the", "of",
+    "for", "to", "in", "on", "and", "or", "from", "with",
+    "explain", "describe", "tell", "me", "about", "please",
+    "show", "give", "does", "do", "can", "could",
+}
+
+_GENERIC_TOPIC_WORDS = {
+    "management", "system", "systems", "php", "mysql",
+    "code", "file", "website", "application",
+}
+
+
+def _has_specific_topic_match(question, results):
+    words = set(re.findall(r"\w+", question.casefold()))
+
+    topic_words = words - _TOPIC_FILLER_WORDS - _GENERIC_TOPIC_WORDS
+
+    # Generic sawaalon, jaise "What is SQL?", ke liye fallback.
+    if not topic_words:
+        topic_words = words - _TOPIC_FILLER_WORDS
+
+    source_words = set()
+    for result in results:
+        text = result.get("context", "") + " " + " ".join(result.get("snippets", []))
+        source_words.update(re.findall(r"\w+", text.casefold()))
+
+    # employees/managers jaise plural shabdon ko bhi match karo.
+    source_words.update(
+        word[:-1] for word in tuple(source_words)
+        if word.endswith("s") and len(word) > 4
+    )
+    topic_words.update(
+        word[:-1] for word in tuple(topic_words)
+        if word.endswith("s") and len(word) > 4
+    )
+
+    return bool(topic_words & source_words)
 
 
 @login_required
@@ -99,14 +140,19 @@ def ask_document(request, document_id):
                 document,
                 form.cleaned_data["question"],
             )
+            results = [
+                result
+                for result in results
+                if _has_specific_topic_match(
+                    form.cleaned_data["question"],
+                    [result],
+                )
+            ]
 
             if results:
                 answer = generate_answer(
                     form.cleaned_data["question"],
                     results,
-                )
-                answer_is_code = is_code_question(
-                    form.cleaned_data["question"]
                 )
         except (VectorSearchError, AnswerGenerationError) as problem:
             error = str(problem)
