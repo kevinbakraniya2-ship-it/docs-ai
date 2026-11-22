@@ -1,3 +1,6 @@
+from chromadb.utils.embedding_functions import chroma_cloud_splade_embedding_function
+from numpy.random import normal
+from ast import For
 import re
 import httpx
 from ollama import Client, ResponseError
@@ -88,11 +91,13 @@ def generate_answer(question, results):
         "clearly named sections and do not merge their details. Do not repeat "
         "the same point. If the excerpts do not support an answer, say that "
         "you could not find it in this PDF. Reply in the same language as the "
-        "question. For normal explanations, use concise, natural plain text "
-        "with short paragraphs and simple bullet lines; do not use Markdown "
-        "markers such as **, #, or backticks. For code questions, return only "
-        "the code present in the excerpts, without Markdown fences, preserving "
-        "line breaks and indentation. Never invent missing code or facts."
+        "question. For normal explanations, use concise, natural plain text with short paragraphs "
+        "and simple bullet lines; do not use Markdown markers such as **, #, or "
+        "backticks. Add a citation like [Page 2] to every factual paragraph or bullet. "
+        "Use only page numbers from the supplied excerpts, and never guess a page number. "
+        "For code questions, return only the code present in the excerpts, without "
+        "Markdown fences or citations inside the code; preserve line breaks and "
+        "indentation. Never invent missing code or facts."
     )
     messages = [
         {"role": "system", "content": instructions},
