@@ -87,6 +87,21 @@ def index_document_pages(document):
             "PDF pages ko local vector store mein save nahi kar paaye."
         ) from problem
 
+def delete_document_vectors(document):
+    """Remove this document's pages from the local vector store."""
+    try:
+        collection = _get_collection()
+        filters = {
+            "$and": [
+                {"owner_id": {"$eq": str(document.owner_id)}},
+                {"document_id": {"$eq": str(document.pk)}},
+            ]
+        }
+        collection.delete(where=filters)
+    except Exception as problem:
+        raise VectorSearchError(
+            "PDF ke search vectors delete nahi kar paaye."
+        ) from problem
 
 def search_document_pages(document, question, limit=3):
     """Find the closest pages for a question, only within this user's PDF."""

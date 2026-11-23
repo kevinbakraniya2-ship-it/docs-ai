@@ -22,7 +22,7 @@ from unittest.mock import Mock, patch
 from .pdf_reader import extract_pdf_pages
 from .views import _has_specific_topic_match
 
-
+from unittest.mock import patch
 
 User = get_user_model()
 
@@ -127,6 +127,52 @@ class DocumentUploadTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertFalse(Document.objects.exists())
 
+    @patch("documents.views.delete_document_vectors")
+    def test_delete_removes_document_file_and_vectors(self, mock_delete_vectors):
+        document = Document.objects.create(
+            owner=self.user,
+            title="Delete test",
+            file=self.make_pdf(name="delete-test.pdf"),
+        )
+        document_id = document.pk
+        file_path = Path(document.file.path)
+
+        response = self.client.post(
+            reverse("documents:delete", args=[document_id])
+        )
+
+        self.assertRedirects(response, reverse("documents:list"))
+        self.assertFalse(Document.objects.filter(pk=document_id).exists())
+        self.assertFalse(file_path.exists())
+        mock_delete_vectors.assert_called_once()
+
+    def test_delete_requires_post(self):
+        document = Document.objects.create(
+            owner=self.user,
+            title="Keep this PDF",
+            file=self.make_pdf(name="keep-test.pdf"),
+        )
+
+        response = self.client.get(
+            reverse("documents:delete", args=[document.pk])
+        )
+
+        self.assertRedirects(response, reverse("documents:list"))
+        self.assertTrue(Document.objects.filter(pk=document.pk).exists())
+
+    def test_user_cannot_delete_another_users_document(self):
+        document = Document.objects.create(
+            owner=self.other_user,
+            title="Private PDF",
+            file=self.make_pdf(name="private-test.pdf"),
+        )
+
+        response = self.client.post(
+            reverse("documents:delete", args=[document.pk])
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(Document.objects.filter(pk=document.pk).exists())
 
 class AnswerFormattingTests(SimpleTestCase):
     def test_plain_answer_removes_markdown_markers(self):

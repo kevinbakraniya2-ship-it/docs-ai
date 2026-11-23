@@ -11,8 +11,9 @@ from .answer_service import (
     generate_answer,
     is_code_question,
 )
+from django.contrib import messages
 
-from .vector_search import VectorSearchError, search_document_pages
+from .vector_search import (VectorSearchError, search_document_pages,delete_document_vectors)
 
 _TOPIC_FILLER_WORDS = {
     "what", "when", "where", "which", "who", "why", "how",
@@ -64,6 +65,33 @@ def document_list(request):
         {"documents": documents},
     )
 
+@login_required
+def delete_document(request, document_id):
+    if request.method != "POST":
+        return redirect("documents:list")
+
+    document = get_object_or_404(
+        Document,
+        id=document_id,
+        owner=request.user,
+    )
+    file_name = document.file.name
+    file_storage = document.file.storage
+    title = document.title
+
+    try:
+        delete_document_vectors(document)
+    except VectorSearchError:
+        messages.error(request, "PDF delete nahi hua. Dobara try karo.")
+        return redirect("documents:list")
+
+    document.delete()
+
+    if file_name:
+        file_storage.delete(file_name)
+
+    messages.success(request, f"{title} aur uska search data delete ho gaya.")
+    return redirect("documents:list")
 
 @login_required
 def upload_document(request):
@@ -154,6 +182,8 @@ def ask_document(request, document_id):
                     form.cleaned_data["question"],
                     results,
                 )
+            answer_is_code = is_code_question(form.cleaned_data["question"])
+
         except (VectorSearchError, AnswerGenerationError) as problem:
             error = str(problem)
 

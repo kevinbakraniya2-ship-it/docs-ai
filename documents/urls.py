@@ -9,4 +9,9 @@ urlpatterns = [
     path("upload/", views.upload_document, name="upload"),
     path("<int:document_id>/read/", views.read_document, name="read"),
     path("<int:document_id>/ask/", views.ask_document, name="ask"),
+    path(
+    "<int:document_id>/delete/",
+    views.delete_document,
+    name="delete",
+),
 ]
