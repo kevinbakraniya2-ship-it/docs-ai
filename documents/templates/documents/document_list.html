@@ -4,6 +4,13 @@
 <main>
     <p class="eyebrow">Your private study space</p>
     <h1>My PDFs</h1>
+    {% if messages %}
+    <section class="panel" role="status">
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    </section>
+{% endif %}
     <p class="intro">Only documents uploaded to your account appear here.</p>
     <p><a class="button" href="{% url 'documents:upload' %}">Upload a PDF</a></p>
 
@@ -14,6 +21,12 @@
                 <p>Uploaded {{ document.uploaded_at|date:"M j, Y" }}</p>
                 <a href="{% url 'documents:read' document.id %}">Read text by page</a>
                 <a href="{% url 'documents:ask' document.id %}">Ask this PDF</a>
+                <form method="post"
+                    action="{% url 'documents:delete' document.id %}"
+                    onsubmit="return confirm('Kya tum ye PDF aur iska search data delete karna chahte ho?');">
+                    {% csrf_token %}
+                    <button class="button" type="submit">Delete PDF</button>
+                </form>
             </section>
         {% endfor %}
     {% else %}
