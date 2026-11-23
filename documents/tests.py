@@ -20,7 +20,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from .pdf_reader import extract_pdf_pages
-
+from .views import _has_specific_topic_match
 
 
 
@@ -278,6 +278,37 @@ class DocumentSearchTests(TestCase):
             "volcano astronomy",
         )
         mock_generate.assert_not_called()
+
+class TopicRelevanceTests(SimpleTestCase):
+    def test_rejects_mobile_shop_page_for_employee_question(self):
+        question = "What is an Employee Management System and explain index.php"
+        result = {
+            "context": (
+                "Mobile Shop Management System. Create a website using "
+                "PHP, MySQL, and AJAX to manage mobile phone records."
+            ),
+            "snippets": [],
+        }
+
+        self.assertFalse(
+            _has_specific_topic_match(question, [result])
+        )
+
+    def test_accepts_employee_management_page(self):
+        question = "What is an Employee Management System and explain index.php"
+        result = {
+            "context": (
+                "Employee Management System. Insert, display, update, and "
+                "delete employee records containing name, email, department, "
+                "designation, and salary."
+            ),
+            "snippets": [],
+        }
+
+        self.assertTrue(
+            _has_specific_topic_match(question, [result])
+        )
+
 class PDFOCRTests(SimpleTestCase):
     def make_document(self):
         file_object = SimpleNamespace(
