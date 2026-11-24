@@ -8,7 +8,7 @@ from django.urls import reverse
 
 from .answer_service import AnswerGenerationError, clean_answer, generate_answer,is_code_question
 from .forms import MAX_PDF_SIZE
-from .models import Document, DocumentPage
+from .models import Document, DocumentPage, QuestionAnswer
 
 from unittest.mock import patch
 
@@ -302,6 +302,31 @@ class DocumentSearchTests(TestCase):
         self.assertEqual(page_numbers, [2])
         mock_search.assert_called_once_with(self.document, "SQL query")
         mock_generate.assert_called_once()
+        saved_answer = QuestionAnswer.objects.get(document=self.document)
+        self.assertEqual(saved_answer.question, "SQL query")
+        self.assertEqual(saved_answer.answer, "Fake answer")
+        self.assertEqual(saved_answer.source_pages, [2])
+
+    def test_get_shows_saved_question_history(self):
+        saved_answer = QuestionAnswer.objects.create(
+            document=self.document,
+            question="What is SQL?",
+            answer="SQL means Structured Query Language.",
+            source_pages=[1],
+        )
+
+        response = self.client.get(
+            reverse("documents:ask", args=[self.document.pk])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Question history")
+        self.assertContains(response, saved_answer.question)
+        self.assertContains(response, saved_answer.answer)
+        self.assertEqual(
+            list(response.context["question_history"]),
+            [saved_answer],
+        )
 
     @patch("documents.views.search_document_pages", return_value=[])
     @patch("documents.views.generate_answer")

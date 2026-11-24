@@ -4,7 +4,7 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import DocumentUploadForm, QuestionForm
-from .models import Document, DocumentPage
+from .models import Document, DocumentPage, QuestionAnswer
 from .pdf_reader import PDFProcessingError, extract_pdf_pages
 from .answer_service import (
     AnswerGenerationError,
@@ -159,6 +159,10 @@ def ask_document(request, document_id):
     answer = None
     answer_is_code = False
 
+
+
+    current_history_id = None
+
     if not document.pages.exists():
         error = "Open Read text by page once before asking a question."
 
@@ -199,6 +203,25 @@ def ask_document(request, document_id):
                 except AnswerGenerationError as problem:
                     error = str(problem)
 
+        if answer:
+            history_item = QuestionAnswer.objects.create(
+                document=document,
+                question=form.cleaned_data["question"],
+                answer=answer,
+                answer_is_code=answer_is_code,
+                source_pages=sorted({
+                    result["page_number"]
+                    for result in results
+                }),
+            )
+            current_history_id = history_item.pk
+
+    question_history = document.question_answers.all()
+    if current_history_id is not None:
+        question_history = question_history.exclude(
+            pk=current_history_id
+        )
+
     return render(
         request,
         "documents/ask_document.html",
@@ -209,5 +232,6 @@ def ask_document(request, document_id):
             "answer": answer,
             "answer_is_code": answer_is_code,
             "error": error,
+            "question_history": question_history,
         },
     )
