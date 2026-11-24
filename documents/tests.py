@@ -20,7 +20,11 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from .pdf_reader import extract_pdf_pages
-from .vector_search import search_document_pages
+from .vector_search import (
+    delete_document_vectors,
+    index_document_pages,
+    search_document_pages,
+)
 from .views import _has_specific_topic_match
 
 from unittest.mock import patch
@@ -480,3 +484,98 @@ class VectorSearchTests(SimpleTestCase):
         self.assertEqual(results, [])
         embed.assert_not_called()
         collection.query.assert_not_called()
+
+class VectorIndexLifecycleTests(SimpleTestCase):
+    def make_document(self):
+        pages = [
+            SimpleNamespace(page_number=1, text="Employee records"),
+            SimpleNamespace(page_number=2, text="Course records"),
+        ]
+
+        page_query = Mock()
+        page_query.exclude.return_value = page_query
+        page_query.only.return_value = page_query
+        page_query.order_by.return_value = pages
+
+        document = SimpleNamespace(
+            pk=5,
+            owner_id=2,
+            pages=page_query,
+        )
+        return document
+
+    def test_index_saves_pages_with_document_and_owner_ids(self):
+        document = self.make_document()
+        collection = Mock()
+        collection.get.return_value = {"ids": []}
+
+        with (
+            patch(
+                "documents.vector_search._get_collection",
+                return_value=collection,
+            ),
+            patch(
+                "documents.vector_search._embed",
+                return_value=[[0.1, 0.2], [0.3, 0.4]],
+            ) as embed,
+        ):
+            added_count = index_document_pages(document)
+
+        self.assertEqual(added_count, 2)
+        embed.assert_called_once_with(["Employee records", "Course records"])
+        collection.upsert.assert_called_once_with(
+            ids=["document-5-page-1", "document-5-page-2"],
+            embeddings=[[0.1, 0.2], [0.3, 0.4]],
+            documents=["Employee records", "Course records"],
+            metadatas=[
+                {
+                    "owner_id": "2",
+                    "document_id": "5",
+                    "page_number": 1,
+                },
+                {
+                    "owner_id": "2",
+                    "document_id": "5",
+                    "page_number": 2,
+                },
+            ],
+        )
+
+    def test_index_does_not_embed_pages_already_saved(self):
+        document = self.make_document()
+        collection = Mock()
+        collection.get.return_value = {
+            "ids": ["document-5-page-1", "document-5-page-2"],
+        }
+
+        with (
+            patch(
+                "documents.vector_search._get_collection",
+                return_value=collection,
+            ),
+            patch("documents.vector_search._embed") as embed,
+        ):
+            added_count = index_document_pages(document)
+
+        self.assertEqual(added_count, 0)
+        embed.assert_not_called()
+        collection.upsert.assert_not_called()
+
+    def test_delete_removes_only_this_documents_vectors(self):
+        document = SimpleNamespace(pk=5, owner_id=2)
+        collection = Mock()
+
+        with patch(
+            "documents.vector_search._get_collection",
+            return_value=collection,
+        ):
+            delete_document_vectors(document)
+
+        collection.delete.assert_called_once_with(
+            where={
+                "$and": [
+                    {"owner_id": {"$eq": "2"}},
+                    {"document_id": {"$eq": "5"}},
+                ]
+            }
+        )
