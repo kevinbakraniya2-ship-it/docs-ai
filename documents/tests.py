@@ -20,6 +20,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from .pdf_reader import extract_pdf_pages
+from .vector_search import search_document_pages
 from .views import _has_specific_topic_match
 
 from unittest.mock import patch
@@ -401,3 +402,81 @@ class PDFOCRTests(SimpleTestCase):
         self.assertEqual(pages[0]["text"], "Selectable PDF text")
         convert.assert_not_called()
         ocr.assert_not_called()
+
+class VectorSearchTests(SimpleTestCase):
+    def setUp(self):
+        self.document = SimpleNamespace(pk=5, owner_id=2)
+
+    def test_search_is_scoped_to_document_and_filters_weak_matches(self):
+        collection = Mock()
+        collection.get.return_value = {"ids": ["page-3", "page-9"]}
+        collection.query.return_value = {
+            "documents": [[
+                "Information systems help managers make decisions.",
+                "This passage is not very similar.",
+            ]],
+            "metadatas": [[
+                {"page_number": 3},
+                {"page_number": 9},
+            ]],
+            "distances": [[0.15, 0.75]],
+        }
+
+        with (
+            patch("documents.vector_search.index_document_pages") as index_pages,
+            patch(
+                "documents.vector_search._get_collection",
+                return_value=collection,
+            ),
+            patch(
+                "documents.vector_search._embed",
+                return_value=[[0.1, 0.2]],
+            ),
+        ):
+            results = search_document_pages(
+                self.document,
+                "How do information systems help managers?",
+            )
+
+        expected_filter = {
+            "$and": [
+                {"owner_id": {"$eq": "2"}},
+                {"document_id": {"$eq": "5"}},
+            ]
+        }
+
+        index_pages.assert_called_once_with(self.document)
+        collection.get.assert_called_once_with(
+            where=expected_filter,
+            include=["metadatas"],
+        )
+        collection.query.assert_called_once_with(
+            query_embeddings=[[0.1, 0.2]],
+            where=expected_filter,
+            n_results=2,
+            include=["documents", "metadatas", "distances"],
+        )
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["page_number"], 3)
+        self.assertAlmostEqual(results[0]["score"], 0.85)
+
+    def test_search_returns_empty_when_document_has_no_indexed_pages(self):
+        collection = Mock()
+        collection.get.return_value = {"ids": []}
+
+        with (
+            patch("documents.vector_search.index_document_pages"),
+            patch(
+                "documents.vector_search._get_collection",
+                return_value=collection,
+            ),
+            patch("documents.vector_search._embed") as embed,
+        ):
+            results = search_document_pages(
+                self.document,
+                "What is the topic?",
+            )
+
+        self.assertEqual(results, [])
+        embed.assert_not_called()
+        collection.query.assert_not_called()
