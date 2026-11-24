@@ -50,3 +50,21 @@ class DocumentPage(models.Model):
 
     def __str__(self):
         return f"{self.document.title} — page {self.page_number}"
+
+class QuestionAnswer(models.Model):
+    document = models.ForeignKey(
+        Document,
+        on_delete=models.CASCADE,
+        related_name="question_answers",
+    )
+    question = models.TextField()
+    answer = models.TextField()
+    answer_is_code = models.BooleanField(default=False)
+    source_pages = models.JSONField(default=list, blank=True)
+    asked_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-asked_at"]
+
+    def __str__(self):
+        return f"{self.document.title}: {self.question[:60]}"

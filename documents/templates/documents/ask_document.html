@@ -77,6 +77,44 @@
             <p>No matching text found. Try words that appear in the PDF.</p>
         </section>
     {% endif %}
+    {% if question_history %}
+        <section class="passages-section" aria-labelledby="history-title">
+            <div class="section-heading">
+                <h2 id="history-title">Question history</h2>
+                <p>Your earlier questions and answers for this PDF.</p>
+            </div>
+
+            <div class="passage-list">
+                {% for item in question_history %}
+                    <article class="passage-card">
+                        <p class="answer-kicker">
+                            {{ item.asked_at|date:"M j, Y, g:i a" }}
+                        </p>
+                        <h3>{{ item.question }}</h3>
+
+                        {% if item.answer_is_code %}
+                            <pre class="answer-code"><code>{{ item.answer }}</code></pre>
+                        {% else %}
+                            <div class="answer-text">
+                                {{ item.answer|linebreaksbr }}
+                            </div>
+                        {% endif %}
+
+                        {% if item.source_pages %}
+                            <div class="answer-sources">
+                                <span class="source-label">Source pages</span>
+                                <div class="source-list">
+                                    {% for page_number in item.source_pages %}
+                                        <span class="source-chip">Page {{ page_number }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    </article>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
 
     <p class="back-link"><a href="{% url 'documents:list' %}">Back to My PDFs</a></p>
 </main>
