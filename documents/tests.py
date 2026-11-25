@@ -348,7 +348,7 @@ class DocumentSearchTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["results"], [])
-        self.assertContains(response, "No matching text found.")
+        self.assertContains(response, "No matching passages found.")
         mock_search.assert_called_once_with(
             self.document,
             "volcano astronomy",
