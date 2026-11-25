@@ -5,7 +5,7 @@
     <section class="form-card">
         <p class="eyebrow">Add study material</p>
         <h1>Upload a PDF</h1>
-        <p class="muted">Choose a PDF up to 10 MB. It will be attached to your account.</p>
+        <p class="muted">Choose a PDF up to 10 MB. It will be saved to your account.</p>
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}

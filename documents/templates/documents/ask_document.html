@@ -1,46 +1,42 @@
 {% extends "core/base.html" %}
-
 {% block title %}Ask {{ document.title }} · Docs AI{% endblock %}
-
 {% block content %}
 <main class="ask-page">
     <header class="ask-heading">
         <p class="eyebrow">Document workspace / Ask</p>
         <h1 class="ask-title">{{ document.title }}</h1>
-        <p class="ask-subtitle">Ask about this PDF and check the source pages behind the answer.</p>
+        <p class="ask-subtitle">Ask about this PDF and check the pages behind the answer.</p>
     </header>
 
-    <form method="post" class="form-card ask-form">
+    <form method="post" class="form-card ask-form" data-loading-form>
         {% csrf_token %}
         <div class="question-field">
             {{ form.question.label_tag }}
             {{ form.question }}
             {{ form.question.errors }}
         </div>
-        <button class="button" type="submit">Search this PDF</button>
+        <button class="button" type="submit"><span data-button-label>Search this PDF</span></button>
+        <div class="loading-status" data-loading-status role="status" aria-live="polite" hidden>
+            <span class="spinner" aria-hidden="true"></span>
+            <span>Searching the PDF and preparing an answer. This can take a little time.</span>
+        </div>
     </form>
 
     {% if error %}
-        <section class="notice" role="status">
-            <p>{{ error }}</p>
-        </section>
+        <section class="notice" role="status"><p>{{ error }}</p></section>
     {% endif %}
 
     {% if answer %}
         <section class="answer-card" aria-labelledby="answer-title">
             <div class="answer-heading">
-                <div>
-                    <p class="answer-kicker">From your document</p>
-                    <h2 id="answer-title">Answer</h2>
-                </div>
+                <p class="answer-kicker">From your document</p>
+                <h2 id="answer-title">Answer</h2>
             </div>
-
             {% if answer_is_code %}
                 <pre class="answer-code"><code>{{ answer }}</code></pre>
             {% else %}
                 <div class="answer-text">{{ answer|linebreaksbr }}</div>
             {% endif %}
-
             {% if results %}
                 <div class="answer-sources">
                     <span class="source-label">Relevant pages</span>
@@ -58,54 +54,43 @@
         <section class="passages-section" aria-labelledby="passages-title">
             <div class="section-heading">
                 <h2 id="passages-title">Matching passages</h2>
-                <p>These are the parts of the PDF used to find the answer.</p>
+                <p>These passages were used to find the answer.</p>
             </div>
-
             <div class="passage-list">
                 {% for result in results %}
                     <article class="passage-card" id="source-page-{{ result.page_number }}">
                         <h3>Page {{ result.page_number }}</h3>
-                        {% for snippet in result.snippets %}
-                            <p>{{ snippet }}</p>
-                        {% endfor %}
+                        {% for snippet in result.snippets %}<p>{{ snippet }}</p>{% endfor %}
                     </article>
                 {% endfor %}
             </div>
         </section>
     {% elif request.method == "POST" and not error %}
-        <section class="notice" role="status">
-            <p>No matching text found. Try words that appear in the PDF.</p>
-        </section>
+        <section class="notice" role="status"><p>No matching passages found. Try words used in the PDF.</p></section>
     {% endif %}
+
     {% if question_history %}
         <section class="passages-section" aria-labelledby="history-title">
             <div class="section-heading">
                 <h2 id="history-title">Question history</h2>
                 <p>Your earlier questions and answers for this PDF.</p>
             </div>
-
             <div class="passage-list">
                 {% for item in question_history %}
                     <article class="passage-card">
-                        <p class="answer-kicker">
-                            {{ item.asked_at|date:"M j, Y, g:i a" }}
-                        </p>
+                        <p class="answer-kicker">{{ item.asked_at|date:"M j, Y, g:i a" }}</p>
                         <h3>{{ item.question }}</h3>
-
                         {% if item.answer_is_code %}
                             <pre class="answer-code"><code>{{ item.answer }}</code></pre>
                         {% else %}
-                            <div class="answer-text">
-                                {{ item.answer|linebreaksbr }}
-                            </div>
+                            <div class="answer-text">{{ item.answer|linebreaksbr }}</div>
                         {% endif %}
-
                         {% if item.source_pages %}
                             <div class="answer-sources">
                                 <span class="source-label">Source pages</span>
                                 <div class="source-list">
                                     {% for page_number in item.source_pages %}
-                                        <span class="source-chip">Page {{ page_number }}</span>
+                                        <a class="source-chip" href="{% url 'documents:read' document.id %}#page-{{ page_number }}">Page {{ page_number }}</a>
                                     {% endfor %}
                                 </div>
                             </div>

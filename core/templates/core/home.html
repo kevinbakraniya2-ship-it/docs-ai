@@ -1,32 +1,42 @@
 {% extends "core/base.html" %}
+{% block title %}Docs AI · Study from your PDFs{% endblock %}
 {% block content %}
 <main>
-        <p class="eyebrow">Study with confidence</p>
-        <h1>Ask questions about your PDFs.</h1>
-        <p class="intro">
-            Upload a study document, ask it a question, and get an answer that points
-            back to the page it came from.
-        </p>
-        <section class="panel" aria-labelledby="how-title">
-            <h2 id="how-title">How Docs AI will work</h2>
-            <p>We’ll build the app in small steps. For now, this page confirms your new Django project is running.</p>
-            <div class="steps">
-                <article class="step">
-                    <span class="number">01</span>
-                    <h3>Add a PDF</h3>
-                    <p>Keep your study files in your own account.</p>
-                </article>
-                <article class="step">
-                    <span class="number">02</span>
-                    <h3>Ask a question</h3>
-                    <p>Search inside the document you selected.</p>
-                </article>
-                <article class="step">
-                    <span class="number">03</span>
-                    <h3>Check the source</h3>
-                    <p>See which page supports the answer.</p>
-                </article>
-            </div>
-        </section>
-    </main>
+    <section class="home-hero">
+        <p class="eyebrow">A clearer way to study</p>
+        <h1>Find answers in your PDFs.</h1>
+        <p class="intro">Upload your notes, ask a question in your own words, and follow the answer back to the pages that support it.</p>
+        <div class="home-actions">
+            {% if user.is_authenticated %}
+                <a class="button" href="{% url 'documents:list' %}">Open my PDFs</a>
+                <a class="button button-secondary" href="{% url 'documents:upload' %}">Add a PDF</a>
+            {% else %}
+                <a class="button" href="{% url 'accounts:signup' %}">Get started</a>
+                <a class="button button-secondary" href="{% url 'accounts:login' %}">Log in</a>
+            {% endif %}
+        </div>
+    </section>
+
+    <section class="panel home-card" aria-labelledby="how-title">
+        <p class="eyebrow">Three simple steps</p>
+        <h2 id="how-title">From your PDF to a cited answer</h2>
+        <div class="steps">
+            <article class="step">
+                <span class="step-number">01 / UPLOAD</span>
+                <h3>Add your study material</h3>
+                <p>Your PDFs stay connected to your own account.</p>
+            </article>
+            <article class="step">
+                <span class="step-number">02 / ASK</span>
+                <h3>Ask in your own words</h3>
+                <p>Docs AI searches the document for useful passages.</p>
+            </article>
+            <article class="step">
+                <span class="step-number">03 / CHECK</span>
+                <h3>Open the source page</h3>
+                <p>See the passages and pages used for the answer.</p>
+            </article>
+        </div>
+    </section>
+</main>
 {% endblock %}

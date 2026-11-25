@@ -7,4 +7,4 @@ class HomePageTests(TestCase):
         response = self.client.get(reverse("core:home"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Ask questions about your PDFs")
+        self.assertContains(response, "Find answers in your PDFs.")

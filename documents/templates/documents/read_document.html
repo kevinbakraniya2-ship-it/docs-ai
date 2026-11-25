@@ -2,23 +2,29 @@
 {% block title %}{{ document.title }} · Docs AI{% endblock %}
 {% block content %}
 <main>
-    <p class="eyebrow">PDF text preview</p>
-    <h1>{{ document.title }}</h1>
-    <p><a href="{% url 'documents:list' %}">Back to My PDFs</a></p>
+    <header class="page-heading">
+        <p class="eyebrow">PDF text preview</p>
+        <h1>{{ document.title }}</h1>
+        <p class="subtitle"><a href="{% url 'documents:list' %}">Back to My PDFs</a></p>
+    </header>
 
     {% if error %}
-        <section class="panel"><p>{{ error }}</p></section>
+        <section class="notice" role="status"><p>{{ error }}</p></section>
+    {% elif pages %}
+        <div class="passage-list">
+            {% for page in pages %}
+                <article class="passage-card" id="page-{{ page.page_number }}">
+                    <h3>Page {{ page.page_number }}</h3>
+                    {% if page.text %}
+                        <pre class="read-page-text">{{ page.text }}</pre>
+                    {% else %}
+                        <p>No text could be read on this page. It may be blank or the scan may be unclear.</p>
+                    {% endif %}
+                </article>
+            {% endfor %}
+        </div>
     {% else %}
-        {% for page in pages %}
-            <section class="panel">
-                <h2>Page {{ page.page_number }}</h2>
-                {% if page.text %}
-                    <pre style="white-space: pre-wrap">{{ page.text }}</pre>
-                {% else %}
-                    <p>No selectable text on this page. Scanned PDFs will need OCR later.</p>
-                {% endif %}
-            </section>
-        {% endfor %}
+        <section class="empty-state"><h2>No page text available</h2><p>This PDF did not produce readable page text.</p></section>
     {% endif %}
 </main>
 {% endblock %}
