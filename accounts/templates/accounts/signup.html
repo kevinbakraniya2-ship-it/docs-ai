@@ -5,7 +5,7 @@
     <section class="form-card">
         <p class="eyebrow">Your private study space</p>
         <h1>Create account</h1>
-        <p class="muted">Start with an account. Your documents will later be connected to your user.</p>
+        <p class="muted">Create an account to keep your study PDFs in your own space.</p>
         <form method="post">
             {% csrf_token %}
             {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}
